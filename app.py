@@ -5,45 +5,48 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 import numpy as np
 
-# Initialize Flask app
 app = Flask(__name__)
-
-# Folder to store uploaded images
 UPLOAD_FOLDER = 'static/uploads/'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# --- Google Drive Model Setup ---
+# Google Drive model file ID
+FILE_ID = "1g-M2JrvOxpNCr4hsHJUpqW7EHv3BkYgn"
 MODEL_PATH = "best_vgg19_pneumonia.h5"
-GOOGLE_DRIVE_LINK = "https://drive.google.com/uc?export=download&id=1g-M2JrvOxpNCr4hsHJUpqW7EHv3BkYgn"
 
-# Function to download model safely
-def download_model():
+def download_from_gdrive(file_id, dest_path):
     print("🧠 Model not found locally. Downloading from Google Drive...")
-    response = requests.get(GOOGLE_DRIVE_LINK, stream=True)
-    with open(MODEL_PATH, "wb") as f:
-        for chunk in response.iter_content(chunk_size=8192):
+    URL = "https://drive.google.com/uc?export=download"
+    session = requests.Session()
+    response = session.get(URL, params={'id': file_id}, stream=True)
+
+    # Sometimes Google requires a confirm token for large files
+    token = None
+    for key, value in response.cookies.items():
+        if key.startswith('download_warning'):
+            token = value
+    if token:
+        response = session.get(URL, params={'id': file_id, 'confirm': token}, stream=True)
+
+    with open(dest_path, "wb") as f:
+        for chunk in response.iter_content(32768):
             if chunk:
                 f.write(chunk)
     print("✅ Model downloaded successfully!")
 
-# --- Check and download model if not found ---
 if not os.path.exists(MODEL_PATH):
-    download_model()
+    download_from_gdrive(FILE_ID, MODEL_PATH)
 
-# --- Validate model file (should not be empty or invalid HTML) ---
-if os.path.getsize(MODEL_PATH) < 1000000:  # Less than 1 MB = invalid model
+# Double-check model validity
+if os.path.getsize(MODEL_PATH) < 1000000:
     raise RuntimeError("❌ Model download failed — file too small or invalid. "
-                       "Please ensure the file is shared as 'Anyone with the link' in Google Drive.")
+                       "Ensure your Google Drive file is shared as 'Anyone with the link'.")
 
-# --- Load Model ---
 print("🔄 Loading model...")
 model = load_model(MODEL_PATH)
 print("✅ Model loaded successfully!")
 
-# Class names
 class_names = ['NORMAL', 'PNEUMONIA']
 
-# --- Routes ---
 @app.route('/')
 def home():
     return render_template('index.html')
@@ -60,12 +63,9 @@ def predict():
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
     file.save(filepath)
 
-    # Preprocess the image
     img = image.load_img(filepath, target_size=(128, 128))
-    img_array = image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0) / 255.0
+    img_array = np.expand_dims(image.img_to_array(img), axis=0) / 255.0
 
-    # Predict
     prediction = model.predict(img_array)
     predicted_class = class_names[np.argmax(prediction[0])]
     confidence = round(100 * np.max(prediction[0]), 2)
@@ -75,6 +75,5 @@ def predict():
                            prediction=predicted_class,
                            confidence=confidence)
 
-# Run app
 if __name__ == "__main__":
     app.run(debug=True)
