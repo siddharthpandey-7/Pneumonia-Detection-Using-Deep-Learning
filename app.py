@@ -12,7 +12,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # --- Model file setup ---
 MODEL_PATH = "best_vgg19_pneumonia.h5"
-GOOGLE_DRIVE_LINK = "https://drive.google.com/uc?id=1g-M2JrvOxpNCr4hsHJUpqW7EHv3BkYgn"
+GOOGLE_DRIVE_LINK = "https://drive.google.com/uc?export=download&id=1g-M2JrvOxpNCr4hsHJUpqW7EHv3BkYgn"
 
 # Download model if not found locally
 if not os.path.exists(MODEL_PATH):
