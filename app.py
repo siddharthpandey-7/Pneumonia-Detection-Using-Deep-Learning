@@ -18,7 +18,7 @@ MODEL_PATH = 'best_vgg19_pneumonia.h5'
 
 # 🔗 Replace the below link with your direct Google Drive download link
 # Example: https://drive.google.com/uc?id=YOUR_FILE_ID
-GOOGLE_DRIVE_LINK = "https://drive.google.com/file/d/1g-M2JrvOxpNCr4hsHJUpqW7EHv3BkYgn/view?usp=drive_link"
+GOOGLE_DRIVE_LINK = "https://drive.google.com/uc?id=1g-M2JrvOxpNCr4hsHJUpqW7EHv3BkYgn"
 
 # --- Download model automatically if not found ---
 if not os.path.exists(MODEL_PATH):
