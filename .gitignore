@@ -20,3 +20,5 @@ chest_xray/
 
 # System files
 .DS_Store
+
+pneumonia-model/
