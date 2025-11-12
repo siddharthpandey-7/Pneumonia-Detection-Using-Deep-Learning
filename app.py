@@ -10,6 +10,8 @@ app = Flask(__name__)
 # Hugging Face model URL
 MODEL_URL = "https://huggingface.co/siddharthpandey7/pneumonia-model/resolve/main/best_vgg19_pneumonia.h5"
 MODEL_PATH = "best_vgg19_pneumonia.h5"
+UPLOAD_FOLDER = "static/uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # ------------------ Download Model ------------------
 def download_model():
@@ -52,19 +54,34 @@ def predict():
         return "No selected file", 400
 
     try:
-        img = Image.open(file).convert("RGB").resize((128, 128))
+        # ✅ Save uploaded file
+        filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+        file.save(filepath)
+
+        # ✅ Preprocess image
+        img = Image.open(filepath).convert("RGB").resize((128, 128))
         img = np.array(img) / 255.0
         img = np.expand_dims(img, axis=0)
 
         model_instance = get_model()
         prediction = model_instance.predict(img)
 
+        # ✅ Calculate probability and confidence
         prob = float(prediction[0][0]) if prediction.shape == (1, 1) else float(np.max(prediction))
-        result = "PNEUMONIA DETECTED" if prob > 0.5 else "NORMAL"
+        result = "PNEUMONIA" if prob > 0.5 else "NORMAL"
+        confidence = round(prob * 100 if prob > 0.5 else (1 - prob) * 100, 2)
 
-        return render_template("result.html", result=result)
+        # ✅ Pass all values to result.html
+        return render_template(
+            "result.html",
+            filename=file.filename,
+            prediction=result,
+            confidence=confidence
+        )
     except Exception as e:
         print("❌ Prediction error:", e)
+        import traceback
+        traceback.print_exc()
         return f"Error during prediction: {str(e)}", 500
 
 if __name__ == "__main__":
