@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Force Python 3.10 on Render
+# Force Python 3.10 on Render (Render defaults to 3.13)
 pyenv install -s 3.10.13
 pyenv global 3.10.13
 
