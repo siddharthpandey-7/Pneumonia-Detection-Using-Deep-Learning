@@ -1,7 +1,7 @@
-Flask==2.3.2
-tensorflow==2.11.0
-numpy==1.23.5
-gunicorn==21.2.0
-Pillow==9.5.0
+Flask==3.0.3
+tensorflow==2.18.0
+keras==3.8.0
+numpy==1.26.4
+Pillow==10.2.0
 requests==2.32.3
-h5py==3.8.0
+gunicorn==21.2.0
