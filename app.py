@@ -4,25 +4,36 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from PIL import Image
 import base64
+import requests
 import os
 from io import BytesIO
 
 app = Flask(__name__)
 
-# ------------------------------------------------------
-# Load model from local file (Railway supports .h5)
-# ------------------------------------------------------
-MODEL_PATH = "best_vgg19_pneumonia.h5"
+# -------------------- HuggingFace Model --------------------
+MODEL_URL = "https://huggingface.co/siddharthpandey7/pneumonia-model/resolve/main/best_vgg19_pneumonia.h5"
+MODEL_PATH = "model.h5"
+
+def download_model():
+    if not os.path.exists(MODEL_PATH):
+        print("Downloading model from HuggingFace...")
+        r = requests.get(MODEL_URL)
+        with open(MODEL_PATH, "wb") as f:
+            f.write(r.content)
+        print("Model downloaded successfully.")
+
+download_model()
+
 print("Loading model...")
 model = load_model(MODEL_PATH, compile=False)
 print("Model loaded successfully.")
 
 IMG_SIZE = (128, 128)
 
+# -------------------- ROUTES --------------------
 @app.route("/")
 def home():
     return render_template("index.html")
-
 
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -33,52 +44,41 @@ def predict():
     if file.filename == "":
         return render_template("result.html", prediction="No file selected")
 
-    # ------------------------------------------------------
-    # Save uploaded file locally
-    # ------------------------------------------------------
+    # Save file
     os.makedirs("uploads", exist_ok=True)
     file_path = os.path.join("uploads", file.filename)
     file.save(file_path)
 
-    # ------------------------------------------------------
-    # Convert image to Base64 for display in result.html
-    # ------------------------------------------------------
+    # Convert to base64
     pil_image = Image.open(file_path)
-    buffered = BytesIO()
-    pil_image.save(buffered, format="JPEG")
-    img_data = "data:image/jpeg;base64," + base64.b64encode(buffered.getvalue()).decode()
+    buffer = BytesIO()
+    pil_image.save(buffer, format="JPEG")
+    img_data = "data:image/jpeg;base64," + base64.b64encode(buffer.getvalue()).decode()
 
-    # ------------------------------------------------------
-    # Preprocess for model
-    # ------------------------------------------------------
+    # Preprocess
     img = load_img(file_path, target_size=IMG_SIZE)
-    img_arr = img_to_array(img) / 255.0
-    img_arr = np.expand_dims(img_arr, axis=0)
+    arr = img_to_array(img) / 255.0
+    arr = np.expand_dims(arr, axis=0)
 
-    # Prediction
-    prediction = model.predict(img_arr)[0]
-    normal_prob, pneumonia_prob = prediction
+    normal, pneumonia = model.predict(arr)[0]
 
-    if pneumonia_prob > normal_prob:
+    if pneumonia > normal:
         label = "PNEUMONIA DETECTED"
-        confidence = pneumonia_prob * 100
+        confidence = pneumonia * 100
     else:
         label = "NORMAL"
-        confidence = normal_prob * 100
-
-    confidence = round(confidence, 2)
+        confidence = normal * 100
 
     return render_template(
         "result.html",
         prediction=label,
-        confidence=confidence,
+        confidence=round(confidence, 2),
         img_data=img_data
     )
 
+@app.route("/health")
+def health():
+    return "OK", 200
 
-# ------------------------------------------------------
-# Railway requires dynamic port assignment
-# ------------------------------------------------------
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 3000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=8080)
